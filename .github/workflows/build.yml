@@ -54,7 +54,8 @@ jobs:
           export LLVM=1
           export LLVM_IAS=1
           # 直接使用仓库根目录的 .config
-          cp .config out/.config || true
+          mkdir out
+          cp .config out/.config
           make O=out olddefconfig
           make O=out -j$(nproc)
 
