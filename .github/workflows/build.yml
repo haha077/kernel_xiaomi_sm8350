@@ -1,0 +1,70 @@
+name: Build Kernel (LLVM 17.0.6)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    name: Compile kernel_xiaomi_sm8350 with LLVM 17.0.6
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout kernel source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential bc bison flex libssl-dev \
+            libelf-dev dwarves ccache lld wget unzip
+
+      - name: Download LLVM 17.0.6 (prebuilt)
+        run: |
+          mkdir -p ~/llvm
+          wget https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+          tar -xf clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz -C ~/llvm --strip-components=1
+
+      - name: Setup build environment
+        run: |
+          echo "Setting up LLVM 17.0.6 toolchain..."
+          export PATH=~/llvm/bin:$PATH
+          export LD_LIBRARY_PATH=~/llvm/lib:$LD_LIBRARY_PATH
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export LLVM=1
+          export LLVM_IAS=1
+          export KBUILD_BUILD_USER=github
+          export KBUILD_BUILD_HOST=actions
+          echo "Toolchain version:"
+          clang --version
+
+      - name: Build kernel
+        run: |
+          export PATH=~/llvm/bin:$PATH
+          export LD_LIBRARY_PATH=~/llvm/lib:$LD_LIBRARY_PATH
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export LLVM=1
+          export LLVM_IAS=1
+          # 直接使用仓库根目录的 .config
+          cp .config out/.config || true
+          make O=out olddefconfig
+          make O=out -j$(nproc)
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-build
+          path: |
+            out/arch/arm64/boot/Image
+            out/arch/arm64/boot/Image.gz
+            out/arch/arm64/boot/dts/**/*.dtb
+            out/arch/arm64/boot/dts/**/*.dtbo
+            out/**/*.ko
