@@ -57,15 +57,14 @@ jobs:
           mkdir out
           mv .config out/.config
           make O=out olddefconfig
-          make O=out  KCFLAGS="-Wno-error=frame-larger-than" -j$(nproc)
+          make O=out -j$(nproc)
 
-      - name: Upload build artifacts
+      - name: Upload kernel Image & DTB/DTBO
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-build
+          name: kernel-output
           path: |
             out/arch/arm64/boot/Image
-            out/arch/arm64/boot/Image.gz
+            out/arch/arm64/boot/*.gz
             out/arch/arm64/boot/dts/**/*.dtb
             out/arch/arm64/boot/dts/**/*.dtbo
-            out/**/*.ko
